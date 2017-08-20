@@ -10,8 +10,6 @@
 using namespace std;
 #include "numfunction.h"
 #include "matsextrapolation.h"
-#include "parametrizedMassfunction.h"
-using namespace parametrizedMassfunction;
 
 const char path[255] = "MatsuBaraRes/";
 const char type[255] = ".txt";
@@ -60,85 +58,107 @@ string makeFilname(char* name, const char* suffix)
     return string(buffer1);
 }
 
+double m_tilde(int m, double phi, double beta)
+{
+    return (PI * ((2. * (double) m) + 1.) - phi) / beta;
+}
 
-double MassFunction(double x,
-                    double y,
-                    double alfa,
+double xiprime_f(int n, int l, double beta, double q, double delta)
+{
+    double omegaN_minus_omegaL_squared
+        = pow((2. * PI * ((n - l) / beta)),
+              2); // this is the matsubara part of the kernel we just shifted the momentum part
+    double xiprime
+        = pow(((q * q) + omegaN_minus_omegaL_squared), 2) + delta; // this is the coloumb kernel
+    return xiprime;
+}
+
+double xi_f(double p, double q, double alfa, double OmegaN)
+{
+    double xi = (p * p) + (q * q) - (2 * fabs(p * q) * cos(alfa))
+                + OmegaN * OmegaN; // |q-p|^2 + OmegaN^2 ;
+    return xi;
+}
+
+double omega_f(double p, double q, double alfa, double OmegaL, double OmegaN)
+{
+    double omega
+        = (((p * p) - fabs(p * q) * cos(alfa)) + (OmegaL * OmegaN))
+          / ((p * p) + (pow(OmegaL, 2))); // this is the scalar product part in the nominator
+    return omega;
+}
+
+double MassFunction(double p,    // outer momentum
+                    double q,    // inner momentum
+                    double alfa, // angle between p and q
                     std::vector<numfunction>& M,
-                    int n,
-                    int m,
+                    int n, // inner Matsubara momentum
+                    int l, // outer Matsubara momentum
                     double phi,
                     double beta,
                     double delta)
 {
-    double theta = sqrt(x * x + y * y - 2 * x * y * cos(alfa));
+    double theta = sqrt(p * p + q * q - 2 * p * q * cos(alfa));
+    // Mtheta = M(q-p,n)
     double Mtheta = extrapolateMats(n,
                                     [&](int n_mats)
                                     {
                                         return M[n_mats](theta);
                                     },
                                     M.size());
-    double Mass = extrapolateMats(n,
-                                  [&](int n_mats)
-                                  {
-                                      return M[n_mats](x);
-                                  },
-                                  M.size());
+    double Mp = extrapolateMats(l,
+                                [&](int n_mats)
+                                {
+                                    return M[n_mats](p);
+                                },
+                                M.size());
     double M2 = (Mtheta * Mtheta);
-    int mtilde = m;
-    int ntilde = n;
-    int ntildeNeg = -n - 1;
-    double Ntilde = ((PI * ((2 * ntilde) + 1)) - phi) / beta;
-    double Mtilde = ((PI * ((2 * mtilde) + 1)) - phi) / beta;
-    double NtildeNeg = ((PI * ((2 * ntildeNeg) + 1)) - phi) / beta;
-    double xi = ((x * x) + (y * y) - (2 * fabs(x * y) * cos(alfa)))
-                + (pow(Ntilde, 2)); // this is theta to the power of two ;
-    double xiNeg = ((x * x) + (y * y) - (2 * fabs(x * y) * cos(alfa)))
-                   + (pow(NtildeNeg, 2)); // this is theta negative to the power of two ;
-    double omega
-        = (((x * x) - fabs(x * y) * cos(alfa)) + (Mtilde * Ntilde))
-          / ((x * x) + (pow(Mtilde, 2))); // this is the scalar product part in the nominator
-    double omegaNeg
-        = (((x * x) - fabs(x * y) * cos(alfa)) + (Mtilde * NtildeNeg))
-          / ((x * x)
-             + (pow(Mtilde, 2))); // this is the scalar product negative part in the nominator
-    double zetta
-        = pow((2 * PI * ((ntilde - mtilde) / beta)),
-              2); // this is the matsubara part of the kernel we just shifted the momentum part
-    double zettaNeg = pow(
-        (2 * PI * ((ntildeNeg - mtilde) / beta)),
-        2); // this is the matsubara part of the kernel negative we just shifted the momentum part
-    double xiprime = (pow(((y * y) + zetta), 2) + delta); // this is the coloumb kernel
-    double xiprimeNeg = (pow(((y * y) + zettaNeg), 2)
-                         + delta); // this is the coloumb kernel with the negative part
-    double B = (y / (xiprime)) * (Mtheta / (beta * sqrt(xi + M2)));
-    double C = (y / (xiprime)) * (omega / (beta * sqrt(xi + M2)));
-    double BNeg = (y / (xiprimeNeg)) * (Mtheta / (beta * sqrt(xiNeg + M2)));
-    double CNeg = (y / (xiprimeNeg)) * (omegaNeg / (beta * sqrt(xiNeg + M2)));
-    double First = C + CNeg;
-    double Second = B + BNeg;
-    double result = (1. / PI) * (Second - (Mass * First));
+    int n_neg = -n - 1;
 
-    if(::isnan(C))
+    double OmegaL = m_tilde(l, phi, beta);
+    double OmegaN_neg = m_tilde(n_neg, phi, beta);
+    double OmegaN = m_tilde(n, phi, beta);
+
+    double xi = xi_f(p, q, alfa, OmegaN);
+    double xi_neg = xi_f(p, q, alfa, OmegaN_neg);
+
+    double omega = omega_f(p, q, alfa, OmegaL, OmegaN);
+    double omega_neg = omega_f(p, q, alfa, OmegaL, OmegaN_neg);
+
+    double xi_prime = xiprime_f(n, l, beta, q, delta);
+    double xi_prime_neg = xiprime_f(n_neg, l, beta, q, delta);
+
+    double u_plus = (q / xi_prime) * (Mtheta / (beta * sqrt(xi + M2)));
+    double u_neg = (q / xi_prime_neg) * (Mtheta / (beta * sqrt(xi_neg + M2)));
+
+    double v_plus = (q / xi_prime) * (omega / (beta * sqrt(xi + M2)));
+    double v_neg = (q / xi_prime_neg) * (omega_neg / (beta * sqrt(xi_neg + M2)));
+
+    double v_tot = v_plus + v_neg;
+    double u_tot = u_plus + u_neg;
+
+    double result = (1. / PI) * (u_tot - (Mp * v_tot));
+
+    if(::isnan(v_plus))
     {
         cout << "For C"
              << "theta"
              << "....." << theta << "..." << Mtheta << "..."
              << "Mtheta"
-             << "..." << xiprime << "coloumb kernel" << endl;
+             << "..." << xiprime_f << "coloumb kernel" << endl;
         exit(1);
     }
 
     return result;
 }
 
+
 double integral(double y, double beta, int n, std::vector<numfunction>& M, double phi)
 {
-    int N = 3.;
-    int ntilde = n;
+    double N = 3.;
     int ntildeNeg = -n - 1;
-    double Ntilde = ((PI * ((2 * ntilde) + 1)) - phi) / beta;
-    double NtildeNeg = ((PI * ((2 * ntildeNeg) + 1)) - phi) / beta;
+    double Ntilde = m_tilde(n, phi, beta);
+    double NtildeNeg = m_tilde(ntildeNeg, phi, beta);
     double Mass = extrapolateMats(n,
                                   [&](int n_mats)
                                   {
@@ -148,7 +168,7 @@ double integral(double y, double beta, int n, std::vector<numfunction>& M, doubl
     double M2 = Mass * Mass;
     double xi = (y * y) + (pow(Ntilde, 2));       // this is momentum to the power of two ;
     double xiNeg = (y * y) + (pow(NtildeNeg, 2)); // this is momentum to the power of two ;
-    double A = -(N / (PI * beta)) * (y * Mass) * ((1 / sqrt(M2 + xi)) + (1 / sqrt(M2 + xiNeg)));
+    double A = -(N / (PI * beta)) * (y * Mass) * ((1. / sqrt(M2 + xi)) + (1. / sqrt(M2 + xiNeg)));
 
     return A;
 }
@@ -200,9 +220,7 @@ void save(int Mats,
     {
         for(size_t i = 0; i < f[m].size(); i++)
         {
-            int mtilde = m;
-            double Mtilde = ((PI * ((2 * mtilde) + 1)) - phi) / beta;
-
+            double Mtilde = m_tilde(m, phi, beta);
 
             ausgabe << f[m].coord(i) << "\t" << m << "\t" << Mtilde << "\t" << f[m][i] << "\t"
                     << sqrt(pow(f[m].coord(i), 2) + pow(Mtilde, 2)) << "\t" << beta << endl;
@@ -210,7 +228,7 @@ void save(int Mats,
     }
     ausgabe.close();
 
-    double Mtilde = ((PI * ((2 * number) + 1)) - phi) / beta;
+    double Mtilde = m_tilde(number, phi, beta);
     ausgabe.open(makeFilname(filename1, "_extrapolatedData"));
 
     for(int m = 0; m < number; m++)
@@ -226,8 +244,8 @@ void save(int Mats,
 
             double F = extrapolateMats(m, reducedMassFunction, Mats);
 
-            ausgabe << x << "\t" << m << "\t" << Mtilde << "\t" << F << "\t" << pn(m, beta) << "\n"
-                    << endl;
+            ausgabe << x << "\t" << m << "\t" << Mtilde << "\t" << F << "\t"
+                    << m_tilde(m, phi, beta) << "\n" << endl;
         }
         ausgabe << "\n";
     }
@@ -235,7 +253,7 @@ void save(int Mats,
 }
 
 
-void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
+void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double beta)
 {
     size_t ng = 30;
     size_t mg = 25;
@@ -251,18 +269,14 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
     double z0 = 1e-2, z1 = 2 * PI;
     std::vector<numfunction> fnew(Mats, numfunction(gridPoints, irCutoff, uvCutoff));
     std::vector<numfunction> fold(Mats, numfunction(gridPoints, irCutoff, uvCutoff));
-    int number = 2 * Mats;
+    int number = 4 * Mats;
     gauleg_d(q0, q1, x, wx, ng);
     gauleg_d(z0, z1, y, wy, mg);
     double update = 0.0005;
     double phi = 0.;
     double delta = 0.;
-    double beta = 15;
 
-    cout << "Starting solving for beta = " << beta << "\t"
-         << "T"
-         << "\t" << 803 / beta << "MeV"
-         << "\n";
+    cout << "Starting solving for beta = " << beta << ", T = " << 803. / beta << "MeV\n";
 
     for(int m = 0; m < Mats; ++m)
     {
@@ -280,38 +294,33 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
         wx[k] *= x[k] * log(10);
     }
 
-    for(size_t l = 0; l < maxiter; l++)
+    for(size_t iter = 0; iter < maxiter; iter++)
     {
-
 #pragma omp parallel for collapse(2)
-        for(int m = 0; m < Mats; ++m)
+        for(int l = 0; l < Mats; ++l)
         {
             for(size_t i = 0; i < gridPoints; i++)
             {
-                double h = fnew[0].coord(i);
+                double p = fnew[0].coord(i);
                 double r = 0.;
 
                 for(size_t k = 0; k < ng; ++k)
                 {
+                    double q = x[k];
                     double rf = 0;
-
                     for(size_t j = 0; j < mg; ++j)
                     {
+                        double alpha = y[j];
                         for(int n = 0; n < number; ++n)
                         {
-                            // auto reducedMassFunction =[&](int n_mats){return MassFunction
-                            // (h,x[k],y[j],fold,n_mats,m,phi,beta,delta) ;};
-
-                            // double F = extrapolateMats(n,reducedMassFunction,Mats);
-
-                            double F = MassFunction(h, x[k], y[j], fold, n, m, phi, beta, delta);
+                            double F = MassFunction(p, q, alpha, fold, n, l, phi, beta, delta);
 
                             rf += wy[j] * F;
                         }
                     }
                     r += rf * wx[k];
                 }
-                fnew[m][i] = r;
+                fnew[l][i] = r;
             }
         }
 
@@ -344,12 +353,21 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
              << "ABS"
              << "..." << cd << "...."
              << "Iter"
-             << "...." << l << endl;
+             << "...." << iter << endl;
+
+        if(iter == 14)
+        {
+            if(fabs(cp - 9.31688) > 1e-4)
+            {
+                std::cout << "error" << std::endl;
+                exit(1);
+            }
+        }
 
         if(cd < 1e-6)
         {
             cout << "iteration"
-                 << "..." << l << endl;
+                 << "..." << iter << endl;
 
             break;
         }
@@ -357,13 +375,12 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
         if(cp < epsilon)
         {
             cout << "iteration"
-                 << "..." << l << endl;
+                 << "..." << iter << endl;
 
             break;
         }
 
-
-        if(l % 10 == 0)
+        if(iter % 10 == 0)
         {
             save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number, delta);
         }
@@ -397,13 +414,14 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
 
 int main(int argc, char** argv)
 {
-    if(argc < 5)
+    if(argc < 6)
     {
-        cout << "Error!\nUsage: " << argv[0] << " <filename1> <filename3> <maxiter> <Mats>" << endl;
+        cout << "Error!\nUsage: " << argv[0] << " <filename1> <filename3> <maxiter> <Mats> <beta>"
+             << endl;
         exit(1);
     }
 
-    Matsu(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]));
+    Matsu(argv[1], argv[2], atoi(argv[3]), atoi(argv[4]), atof(argv[5]));
 
     return 0;
 }
