@@ -217,7 +217,6 @@ void save(int Mats,
     }
     ausgabe.close();
 
-
     double Mtilde = ((PI * ((2 * number) + 1)) - phi) / beta;
     ausgabe.open(makeFilname(filename1, "_extrapolatedData"));
 
@@ -244,7 +243,6 @@ void save(int Mats,
 
 
 void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
-
 {
     size_t ng = 30;
     size_t mg = 25;
@@ -320,7 +318,6 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
                     }
                     r += rf * wx[k];
                 }
-
                 fnew[m][i] = r;
             }
         }

@@ -20,7 +20,6 @@ extrapolateMats(const int n, const Function& F, const int Mats, const bool extra
             extra = Fx0 + (Fx1 - Fx0) * (n - (Mats - 2)); // linear extrapolation
         result = extra;
     }
-
     else
     {
         result = F(n);
