@@ -12,7 +12,6 @@ using namespace std;
 #include "matsextrapolation.h"
 #include "parametrizedMassfunction.h"
 using namespace parametrizedMassfunction;
-ofstream ausgabe_condensate;
 
 const char path[255] = "MatsuBaraRes/";
 const char type[255] = ".txt";
@@ -164,7 +163,7 @@ double condensateCalculation(std::vector<numfunction>& M,
                              size_t ng,
                              size_t mg,
                              double beta,
-                             double phi) // this is for the calculation of condestate
+                             double phi) // this is for the calculation of condensate
 {
     double ro = 0;
     for(size_t k = 0; k < ng; ++k)
@@ -174,7 +173,6 @@ double condensateCalculation(std::vector<numfunction>& M,
             ro += wx[k] * integral(x[k], beta, n, M, phi);
         }
     }
-
     return ro;
 }
 
@@ -189,10 +187,7 @@ void save(int Mats,
           double B,
           int number,
           double delta)
-
 {
-
-
     ofstream ausgabe;
     ausgabe.open(makeFilname(filename1, "_rawData"));
     ausgabe.precision(10);
@@ -203,8 +198,6 @@ void save(int Mats,
 
     for(int m = 0; m < Mats; m++)
     {
-
-
         for(size_t i = 0; i < f[m].size(); i++)
         {
             int mtilde = m;
@@ -372,7 +365,6 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
 
         if(l % 10 == 0)
         {
-
             save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number, delta);
         }
 
@@ -393,6 +385,8 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
          << beta << "\t" << (803 / beta) << "\t"
          << "MeV"
          << "\t" << maxiter << "\t" << Mats << "\t" << number << endl;
+
+    ofstream ausgabe_condensate;
     ausgabe_condensate.open(filename3, std::fstream::app);
     ausgabe_condensate << beta << "\t" << fold[0](irCutoff) << "\t"
                        << condensateCalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi)
@@ -405,7 +399,7 @@ int main(int argc, char** argv)
 {
     if(argc < 5)
     {
-        cout << "Error!\nUsage: " << argv[0] << " <filename1><filename3><maxiter><Mats>" << endl;
+        cout << "Error!\nUsage: " << argv[0] << " <filename1> <filename3> <maxiter> <Mats>" << endl;
         exit(1);
     }
 

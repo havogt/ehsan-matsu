@@ -12,6 +12,8 @@ include_directories( nr )
 
 add_library( numfunction numfunctionsplinelog.cc )
 
+file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/MatsuBaraRes )
+
 add_executable( MatsuRevised theAdlerDavisMatsuOneBetaRevised.cc )
 target_link_libraries( MatsuRevised numfunction nr )
 
