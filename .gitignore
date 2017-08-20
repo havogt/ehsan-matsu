@@ -1,0 +1,8 @@
+build/
+nr
+
+.project
+.cproject
+.settings
+
+/Release/
