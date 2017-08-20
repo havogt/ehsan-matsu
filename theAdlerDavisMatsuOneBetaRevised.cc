@@ -153,7 +153,7 @@ double MassFunction(double p,    // outer momentum
 }
 
 
-double integral(double y, double beta, int n, std::vector<numfunction>& M, double phi)
+double condensateKernel(double y, double beta, int n, std::vector<numfunction>& M, double phi)
 {
     double N = 3.;
     int ntildeNeg = -n - 1;
@@ -190,7 +190,7 @@ double condensateCalculation(std::vector<numfunction>& M,
     {
         for(int n = 0; n < number; ++n)
         {
-            ro += wx[k] * integral(x[k], beta, n, M, phi);
+            ro += wx[k] * condensateKernel(x[k], beta, n, M, phi);
         }
     }
     return ro;
@@ -252,6 +252,55 @@ void save(int Mats,
     ausgabe.close();
 }
 
+bool check_convergence(int Mats,
+                       const std::vector<numfunction>& fold,
+                       const std::vector<numfunction>& fnew,
+                       size_t iter,
+                       double epsilon)
+{
+    bool stop = false;
+    double cd = 0;
+    double cp = 0;
+    // do convergence test
+    for(int m = 0; m < Mats; ++m)
+    {
+        for(size_t i = 0; i < fold[m].size(); i++)
+        {
+            double cprime = fabs(fold[m][i] - fnew[m][i]);
+            if(cprime > cd)
+            {
+                cd = cprime;
+            }
+        }
+        for(size_t i = 0; i < fold[m].size(); i++)
+        {
+            double c = fabs((fold[m][i] - fnew[m][i]) / (fold[m][i]));
+            if(c > cp)
+            {
+                cp = c;
+            }
+        }
+    }
+    cout << "cp"
+         << "..." << cp << "..."
+         << "ABS"
+         << "..." << cd << "...."
+         << "Iter"
+         << "...." << iter << endl;
+    if(cd < 1e-6)
+    {
+        cout << "iteration"
+             << "..." << iter << endl;
+        stop = true;
+    }
+    if(cp < epsilon)
+    {
+        cout << "iteration"
+             << "..." << iter << endl;
+        stop = true;
+    }
+    return stop;
+}
 
 void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double beta)
 {
@@ -325,60 +374,8 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double be
         }
 
 
-        double cp = 0;
-        double cd = 0;
-        // do convergence test
-        for(int m = 0; m < Mats; ++m)
-        {
-            for(size_t i = 0; i < fold[m].size(); i++)
-            {
-                double cprime = fabs(fold[m][i] - fnew[m][i]);
-
-                if(cprime > cd)
-                {
-                    cd = cprime;
-                }
-            }
-            for(size_t i = 0; i < fold[m].size(); i++)
-            {
-                double c = fabs((fold[m][i] - fnew[m][i]) / (fold[m][i]));
-                if(c > cp)
-                {
-                    cp = c;
-                }
-            }
-        }
-        cout << "cp"
-             << "..." << cp << "..."
-             << "ABS"
-             << "..." << cd << "...."
-             << "Iter"
-             << "...." << iter << endl;
-
-        if(iter == 14)
-        {
-            if(fabs(cp - 9.31688) > 1e-4)
-            {
-                std::cout << "error" << std::endl;
-                exit(1);
-            }
-        }
-
-        if(cd < 1e-6)
-        {
-            cout << "iteration"
-                 << "..." << iter << endl;
-
+        if(check_convergence(Mats, fold, fnew, iter, epsilon))
             break;
-        }
-
-        if(cp < epsilon)
-        {
-            cout << "iteration"
-                 << "..." << iter << endl;
-
-            break;
-        }
 
         if(iter % 10 == 0)
         {
@@ -397,17 +394,15 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double be
     }
 
     save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number, delta);
+    double condensate = condensateCalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi);
     cout << "condensate"
-         << "..." << condensateCalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi) << "\t"
-         << beta << "\t" << (803 / beta) << "\t"
+         << "..." << condensate << "\t" << beta << "\t" << (803 / beta) << "\t"
          << "MeV"
          << "\t" << maxiter << "\t" << Mats << "\t" << number << endl;
 
     ofstream ausgabe_condensate;
     ausgabe_condensate.open(filename3, std::fstream::app);
-    ausgabe_condensate << beta << "\t" << fold[0](irCutoff) << "\t"
-                       << condensateCalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi)
-                       << "\t" << endl;
+    ausgabe_condensate << beta << "\t" << fold[0](irCutoff) << "\t" << condensate << "\t" << endl;
     ausgabe_condensate.flush();
     ausgabe_condensate.close();
 }

@@ -86,7 +86,7 @@ double MassFunction(double x,
 }
 
 
-double integral(double y, double beta, int n, std::vector<numfunction>& M, double phi)
+double condensateKernel(double y, double beta, int n, std::vector<numfunction>& M, double phi)
 {
     double OmegaN = (2 * n + 1) * PI / beta;
     double Mass = M[n](y);
@@ -113,7 +113,7 @@ double condensateCalculation(std::vector<numfunction>& M,
     {
         for(int n = 0; n < Mats; ++n)
         {
-            ro += wx[k] * integral(x[k], beta, n, M, phi);
+            ro += wx[k] * condensateKernel(x[k], beta, n, M, phi);
         }
     }
 
