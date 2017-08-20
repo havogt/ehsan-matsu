@@ -97,7 +97,7 @@ double integral(double y, double beta, int n, std::vector<numfunction>& M, doubl
 
     return Conds;
 }
-double condestatecalculation(std::vector<numfunction>& M,
+double condensateCalculation(std::vector<numfunction>& M,
                              int Mats,
                              double* wx,
                              double* wy,
@@ -276,7 +276,7 @@ void test(char* filename, size_t maxiter, int Mats, double beta)
 
     save(Mats, fnew, filename, beta);
     cout << "condenstate"
-         << "..." << condestatecalculation(fnew, Mats, wx, wy, x, y, ng, mg, beta, phi) << endl;
+         << "..." << condensateCalculation(fnew, Mats, wx, wy, x, y, ng, mg, beta, phi) << endl;
 }
 int main(int argc, char** argv)
 {

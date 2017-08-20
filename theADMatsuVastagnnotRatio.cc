@@ -129,7 +129,6 @@ double condestatecalculation(std::vector<numfunction>& M,
     return ro;
 }
 
-
 void save(int Mats, std::vector<numfunction>& f, char* filename, int beta)
 {
     ofstream ausgabe;

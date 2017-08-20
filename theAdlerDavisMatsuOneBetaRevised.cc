@@ -135,7 +135,6 @@ double MassFunction(double x,
 
 double integral(double y, double beta, int n, std::vector<numfunction>& M, double phi)
 {
-
     int N = 3.;
     int ntilde = n;
     int ntildeNeg = -n - 1;
@@ -156,7 +155,7 @@ double integral(double y, double beta, int n, std::vector<numfunction>& M, doubl
 }
 
 
-double condestatecalculation(std::vector<numfunction>& M,
+double condensateCalculation(std::vector<numfunction>& M,
                              int number,
                              double* wx,
                              double* wy,
@@ -392,14 +391,14 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats)
     }
 
     save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number, delta);
-    cout << "condenstate"
-         << "..." << condestatecalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi) << "\t"
+    cout << "condensate"
+         << "..." << condensateCalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi) << "\t"
          << beta << "\t" << (803 / beta) << "\t"
          << "MeV"
          << "\t" << maxiter << "\t" << Mats << "\t" << number << endl;
     ausgabe_condensate.open(filename3, std::fstream::app);
     ausgabe_condensate << beta << "\t" << fold[0](irCutoff) << "\t"
-                       << condestatecalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi)
+                       << condensateCalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi)
                        << "\t" << endl;
     ausgabe_condensate.flush();
     ausgabe_condensate.close();

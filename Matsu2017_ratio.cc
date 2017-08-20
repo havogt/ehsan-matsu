@@ -44,8 +44,9 @@ void gauleg_d(double x1, double x2, double x[], double w[], int n)
 
 double Mtilde(int m, double beta)
 {
-    ((PI * ((2 * m) + 1))) / beta;
+    return (PI * ((2. * (double) m) + 1.)) / beta;
 }
+
 struct MassfunctionStructure
 {
     double MFUP;
@@ -118,11 +119,11 @@ double integral(double y, double beta, int n, std::vector<numfunction>& M)
 
 
 double condestatecalculation(
-    std::vector<numfunction>& M, int number, double* wx, double* x, size_t ng, double beta)
+    std::vector<numfunction>& M, int number, double* wx, double* x, size_t n_gauleg, double beta)
 {
     double ro = 0.;
 
-    for(size_t k = 0; k < ng; ++k)
+    for(size_t k = 0; k < n_gauleg; ++k)
     {
         for(int n = 0; n < number; ++n)
         {
@@ -142,9 +143,8 @@ void save(int Mats, std::vector<numfunction>& f, char* filename, int beta)
     {
         for(size_t i = 0; i < f[m].size(); i++)
         {
-            double Mtilde = ((PI * ((2 * m) + 1))) / beta;
-
-            ausgabe << f[m].coord(i) << "\t" << m << "\t" << Mtilde << "\t" << f[m][i] << endl;
+            ausgabe << f[m].coord(i) << "\t" << m << "\t" << Mtilde(m, beta) << "\t" << f[m][i]
+                    << endl;
         }
     }
     ausgabe.close();
@@ -153,11 +153,11 @@ void save(int Mats, std::vector<numfunction>& f, char* filename, int beta)
 
 void test(char* filename, size_t maxiter, int Mats, double beta)
 {
-    size_t ng = 30;
+    size_t n_gauleg = 30;
     size_t mg = 25;
     double epsilon = 1e-12;
-    double wx[ng];
-    double x[ng];
+    double wx[n_gauleg];
+    double x[n_gauleg];
     double wy[mg];
     double y[mg];
     int gridPoints = 30;
@@ -167,10 +167,9 @@ void test(char* filename, size_t maxiter, int Mats, double beta)
     double z0 = 1e-2, z1 = 2 * PI;
     std::vector<numfunction> fnew(Mats, numfunction(gridPoints, irCutoff, uvCutoff));
     std::vector<numfunction> fold(Mats, numfunction(gridPoints, irCutoff, uvCutoff));
-    gauleg_d(q0, q1, x, wx, ng);
+    gauleg_d(q0, q1, x, wx, n_gauleg);
     gauleg_d(z0, z1, y, wy, mg);
     double update = 0.9;
-
 
     for(int m = 0; m < Mats; ++m)
     {
@@ -185,9 +184,8 @@ void test(char* filename, size_t maxiter, int Mats, double beta)
         }
     }
 
-
     // update weights for log integration
-    for(size_t k = 0; k < ng; ++k)
+    for(size_t k = 0; k < n_gauleg; ++k)
     {
         x[k] = pow(10, x[k]);
         wx[k] *= x[k] * log(10);
@@ -195,7 +193,6 @@ void test(char* filename, size_t maxiter, int Mats, double beta)
 
     for(size_t l = 0; l < maxiter; l++)
     {
-
 #pragma omp parallel for collapse(2)
         for(int m = 0; m < Mats; ++m)
         {
@@ -205,7 +202,7 @@ void test(char* filename, size_t maxiter, int Mats, double beta)
                 double r = 0.;
                 double s = 0.;
 
-                for(size_t k = 0; k < ng; ++k)
+                for(size_t k = 0; k < n_gauleg; ++k)
                 {
                     double rk = 0.;
                     double sk = 0.;
@@ -256,8 +253,9 @@ void test(char* filename, size_t maxiter, int Mats, double beta)
         }
 
         cout << setw(15) << l << scientific << setprecision(10) << setw(20)
-             << condestatecalculation(fnew, Mats, wx, x, ng, beta) << setw(20) << relativ_error
-             << setw(20) << absolute_error << setw(15) << fixed << setprecision(1) << endl;
+             << condestatecalculation(fnew, Mats, wx, x, n_gauleg, beta) << setw(20)
+             << relativ_error << setw(20) << absolute_error << setw(15) << fixed << setprecision(1)
+             << endl;
 
         if(absolute_error < epsilon)
         {
@@ -294,7 +292,7 @@ void test(char* filename, size_t maxiter, int Mats, double beta)
     save(Mats, fnew, filename, beta);
 
     cout << scientific << setprecision(10) << setw(20) << "condenstate"
-         << "..." << condestatecalculation(fnew, Mats, wx, x, ng, beta) << "\t" << scientific
+         << "..." << condestatecalculation(fnew, Mats, wx, x, n_gauleg, beta) << "\t" << scientific
          << setprecision(10) << setw(20) << "\t"
          << "MeV^3"
          << "\t" << beta << "\t" << beta << "\t" << 803. / beta << "\t"
