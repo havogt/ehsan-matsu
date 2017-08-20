@@ -302,7 +302,8 @@ bool check_convergence(int Mats,
     return stop;
 }
 
-void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double beta)
+double
+Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double beta, bool isTest = false)
 {
     size_t ng = 30;
     size_t mg = 25;
@@ -377,9 +378,13 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double be
         if(check_convergence(Mats, fold, fnew, iter, epsilon))
             break;
 
-        if(iter % 10 == 0)
+        if(!isTest)
         {
-            save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number, delta);
+            if(iter % 10 == 0)
+            {
+                save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number,
+                     delta);
+            }
         }
 
         for(int m = 0; m < Mats; m++)
@@ -392,23 +397,43 @@ void Matsu(char* filename1, char* filename3, size_t maxiter, int Mats, double be
             fold[m].updateInterpolation();
         }
     }
-
-    save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number, delta);
+    if(!isTest)
+        save(Mats, fnew, filename1, beta, phi, gridPoints, irCutoff, uvCutoff, number, delta);
     double condensate = condensateCalculation(fnew, number, wx, wy, x, y, ng, mg, beta, phi);
     cout << "condensate"
          << "..." << condensate << "\t" << beta << "\t" << (803 / beta) << "\t"
          << "MeV"
          << "\t" << maxiter << "\t" << Mats << "\t" << number << endl;
 
-    ofstream ausgabe_condensate;
-    ausgabe_condensate.open(filename3, std::fstream::app);
-    ausgabe_condensate << beta << "\t" << fold[0](irCutoff) << "\t" << condensate << "\t" << endl;
-    ausgabe_condensate.flush();
-    ausgabe_condensate.close();
+    if(!isTest)
+    {
+        ofstream ausgabe_condensate;
+        ausgabe_condensate.open(filename3, std::fstream::app);
+        ausgabe_condensate << beta << "\t" << fold[0](irCutoff) << "\t" << condensate << "\t"
+                           << endl;
+        ausgabe_condensate.flush();
+        ausgabe_condensate.close();
+    }
+    return condensate;
+}
+
+// enable this to ensure that modification do not change the result
+// calls Matsu with given number of frequencies and fixed beta and fixed iteration number
+void test_calculation()
+{
+    char empty[] = "";
+    if(fabs(Matsu(empty, empty, 15, 4, 50, true) - (-0.0272589)) > 1e-6)
+    {
+        std::cout << "test failed, you made modification which changed the calculation!"
+                  << std::endl;
+        exit(1);
+    }
 }
 
 int main(int argc, char** argv)
 {
+    test_calculation();
+
     if(argc < 6)
     {
         cout << "Error!\nUsage: " << argv[0] << " <filename1> <filename3> <maxiter> <Mats> <beta>"
